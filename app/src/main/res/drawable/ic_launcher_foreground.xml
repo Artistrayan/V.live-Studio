@@ -1,0 +1,50 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="18"
+        android:translateY="18">
+        <!-- Terminal / Window Rounded Outline -->
+        <path
+            android:fillColor="#252A41"
+            android:strokeColor="#6366F1"
+            android:strokeWidth="2"
+            android:pathData="M10,8 H62 A6,6 0 0 1 68,14 V58 A6,6 0 0 1 62,64 H10 A6,6 0 0 1 4,58 V14 A6,6 0 0 1 10,8 Z" />
+        
+        <!-- Header dots -->
+        <path
+            android:fillColor="#EC4899"
+            android:pathData="M12,14 A2,2 0 1 1 12,14.01" />
+        <path
+            android:fillColor="#FBBF24"
+            android:pathData="M18,14 A2,2 0 1 1 18,14.01" />
+        <path
+            android:fillColor="#34D399"
+            android:pathData="M24,14 A2,2 0 1 1 24,14.01" />
+
+        <!-- Code Bracket < -->
+        <path
+            android:strokeColor="#38BDF8"
+            android:strokeWidth="3.5"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:fillColor="#00000000"
+            android:pathData="M24,28 L14,38 L24,48" />
+
+        <!-- Code Bracket > -->
+        <path
+            android:strokeColor="#38BDF8"
+            android:strokeWidth="3.5"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:fillColor="#00000000"
+            android:pathData="M48,28 L58,38 L48,48" />
+
+        <!-- AI Spark / Star in Center -->
+        <path
+            android:fillColor="#A855F7"
+            android:pathData="M36,26 C36,32 30,38 24,38 C30,38 36,44 36,50 C36,44 42,38 48,38 C42,38 36,32 36,26 Z" />
+    </group>
+</vector>
