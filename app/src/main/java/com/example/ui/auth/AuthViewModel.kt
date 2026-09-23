@@ -28,7 +28,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch {
-            val url = repository.getSetting("supabase_url") ?: ""
+            val url = repository.getSetting("supabase_url") ?: "https://iuixhbuhrmmgunkttwem.supabase.co"
             val key = repository.getSetting("supabase_anon_key") ?: ""
             _uiState.value = _uiState.value.copy(supabaseUrl = url, supabaseKey = key)
         }

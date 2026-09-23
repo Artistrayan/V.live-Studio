@@ -340,6 +340,9 @@ fun DashboardScreen(
             initialSupabaseUrl = uiState.supabaseUrl,
             initialSupabaseKey = uiState.supabaseKey,
             onDismiss = { viewModel.toggleSettings(false) },
+            onTestDatabase = { url, key, onResult ->
+                viewModel.testDatabaseConnection(url, key, onResult)
+            },
             onSave = { key, model, url, sbKey ->
                 viewModel.saveSettings(key, model, url, sbKey)
             }

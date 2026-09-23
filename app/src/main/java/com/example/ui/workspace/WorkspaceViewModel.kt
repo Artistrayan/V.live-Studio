@@ -45,6 +45,10 @@ class WorkspaceViewModel(application: Application) : AndroidViewModel(applicatio
         currentProjectId = projectId
 
         viewModelScope.launch {
+            repository.syncProjectFiles(projectId)
+        }
+
+        viewModelScope.launch {
             val project = repository.getProject(projectId)
             _uiState.value = _uiState.value.copy(project = project)
 

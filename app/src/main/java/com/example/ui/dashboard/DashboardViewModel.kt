@@ -44,7 +44,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             val key = repository.getSetting("gemini_api_key") ?: ""
             val model = repository.getSetting("gemini_model") ?: "gemini-2.5-pro"
-            val url = repository.getSetting("supabase_url") ?: ""
+            val url = repository.getSetting("supabase_url") ?: "https://iuixhbuhrmmgunkttwem.supabase.co"
             val sbKey = repository.getSetting("supabase_anon_key") ?: ""
             _uiState.value = _uiState.value.copy(
                 geminiKey = key,
@@ -73,6 +73,19 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 supabaseUrl = url,
                 supabaseKey = sbKey
             )
+        }
+    }
+
+    fun testDatabaseConnection(url: String, key: String, onResult: (isSuccess: Boolean, message: String) -> Unit) {
+        viewModelScope.launch {
+            repository.saveSetting("supabase_url", url)
+            repository.saveSetting("supabase_anon_key", key)
+            val res = repository.testDatabaseConnection()
+            if (res.isSuccess) {
+                onResult(true, res.getOrThrow())
+            } else {
+                onResult(false, res.exceptionOrNull()?.message ?: "Connection failed")
+            }
         }
     }
 

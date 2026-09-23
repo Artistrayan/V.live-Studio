@@ -35,10 +35,20 @@ class StudioRepository(context: Context) {
     }
 
     private suspend fun loadSettings() {
-        val geminiKey = settingDao.getSetting("gemini_api_key") ?: ""
+        val buildGemini = try { 
+            com.example.BuildConfig.GEMINI_API_KEY.takeIf { it.isNotBlank() && !it.startsWith("DEFAULT_") } ?: ""
+        } catch (e: Throwable) { "" }
+        val buildSbUrl = try { 
+            com.example.BuildConfig.SUPABASE_URL.takeIf { it.isNotBlank() && !it.startsWith("DEFAULT_") } ?: ""
+        } catch (e: Throwable) { "" }
+        val buildSbKey = try { 
+            com.example.BuildConfig.SUPABASE_ANON_KEY.takeIf { it.isNotBlank() && !it.startsWith("DEFAULT_") } ?: ""
+        } catch (e: Throwable) { "" }
+
+        val geminiKey = settingDao.getSetting("gemini_api_key")?.ifEmpty { null } ?: buildGemini
         val model = settingDao.getSetting("gemini_model") ?: "gemini-2.5-pro"
-        val sbUrl = settingDao.getSetting("supabase_url") ?: ""
-        val sbKey = settingDao.getSetting("supabase_anon_key") ?: ""
+        val sbUrl = settingDao.getSetting("supabase_url")?.ifEmpty { null } ?: buildSbUrl.ifEmpty { "https://iuixhbuhrmmgunkttwem.supabase.co" }
+        val sbKey = settingDao.getSetting("supabase_anon_key")?.ifEmpty { null } ?: buildSbKey
         val sbToken = settingDao.getSetting("supabase_token") ?: ""
 
         if (geminiKey.isNotEmpty()) geminiClient.setApiKey(geminiKey)
@@ -70,7 +80,20 @@ class StudioRepository(context: Context) {
     }
 
     suspend fun getSetting(key: String): String? {
-        return settingDao.getSetting(key)
+        val stored = settingDao.getSetting(key)
+        if (!stored.isNullOrEmpty()) return stored
+        return when (key) {
+            "gemini_api_key" -> try { 
+                com.example.BuildConfig.GEMINI_API_KEY.takeIf { it.isNotBlank() && !it.startsWith("DEFAULT_") }
+            } catch (e: Throwable) { null }
+            "supabase_url" -> try { 
+                com.example.BuildConfig.SUPABASE_URL.takeIf { it.isNotBlank() && !it.startsWith("DEFAULT_") } ?: "https://iuixhbuhrmmgunkttwem.supabase.co"
+            } catch (e: Throwable) { "https://iuixhbuhrmmgunkttwem.supabase.co" }
+            "supabase_anon_key" -> try { 
+                com.example.BuildConfig.SUPABASE_ANON_KEY.takeIf { it.isNotBlank() && !it.startsWith("DEFAULT_") }
+            } catch (e: Throwable) { null }
+            else -> null
+        }
     }
 
     fun getProjects(): Flow<List<ProjectEntity>> = projectDao.getAllProjects()
@@ -266,6 +289,9 @@ document.getElementById('actionBtn')?.addEventListener('click', () => {
         fileDao.deleteFilesByProjectId(id)
         aiDao.clearMessagesForProject(id)
         projectDao.deleteProjectById(id)
+        CoroutineScope(Dispatchers.IO).launch {
+            supabaseClient.deleteProject(id)
+        }
     }
 
     fun getProjectFiles(projectId: String): Flow<List<ProjectFileEntity>> =
@@ -296,6 +322,9 @@ document.getElementById('actionBtn')?.addEventListener('click', () => {
 
     suspend fun deleteFile(id: String) {
         fileDao.deleteFileById(id)
+        CoroutineScope(Dispatchers.IO).launch {
+            supabaseClient.deleteFile(id)
+        }
     }
 
     fun getAiMessages(projectId: String): Flow<List<AiMessageEntity>> =
@@ -309,6 +338,9 @@ document.getElementById('actionBtn')?.addEventListener('click', () => {
             content = userPrompt
         )
         aiDao.insertMessage(userMsg)
+        CoroutineScope(Dispatchers.IO).launch {
+            supabaseClient.upsertAiMessage(userMsg)
+        }
 
         // Get past messages for conversation context
         val past = aiDao.getMessagesForProject(projectId).firstOrNull() ?: emptyList()
@@ -329,6 +361,9 @@ document.getElementById('actionBtn')?.addEventListener('click', () => {
                 content = reply
             )
             aiDao.insertMessage(aiMsg)
+            CoroutineScope(Dispatchers.IO).launch {
+                supabaseClient.upsertAiMessage(aiMsg)
+            }
             Result.success(reply)
         } else {
             val errorMsg = res.exceptionOrNull()?.message ?: "AI Generation Error"
@@ -347,11 +382,34 @@ document.getElementById('actionBtn')?.addEventListener('click', () => {
 
     suspend fun saveUser(user: UserProfileEntity) {
         userDao.insertUser(user)
+        CoroutineScope(Dispatchers.IO).launch {
+            supabaseClient.upsertUserProfile(user)
+        }
     }
 
     suspend fun clearUser() {
         userDao.clearUser()
         saveSetting("supabase_token", "")
+    }
+
+    suspend fun testDatabaseConnection(): Result<String> {
+        return supabaseClient.testConnection()
+    }
+
+    suspend fun syncProjectFiles(projectId: String): Result<Unit> {
+        if (!supabaseClient.isConfigured()) return Result.success(Unit)
+        return try {
+            val filesRes = supabaseClient.fetchFiles(projectId)
+            if (filesRes.isSuccess) {
+                val remoteFiles = filesRes.getOrThrow()
+                if (remoteFiles.isNotEmpty()) {
+                    fileDao.insertFiles(remoteFiles)
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     suspend fun syncWithSupabase(): Result<Unit> {
@@ -362,6 +420,15 @@ document.getElementById('actionBtn')?.addEventListener('click', () => {
                 val list = remoteProjects.getOrThrow()
                 if (list.isNotEmpty()) {
                     projectDao.insertProjects(list)
+                    for (p in list) {
+                        val filesRes = supabaseClient.fetchFiles(p.id)
+                        if (filesRes.isSuccess) {
+                            val fList = filesRes.getOrThrow()
+                            if (fList.isNotEmpty()) {
+                                fileDao.insertFiles(fList)
+                            }
+                        }
+                    }
                 }
             }
             Result.success(Unit)
